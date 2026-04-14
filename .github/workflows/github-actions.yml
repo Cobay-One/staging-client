@@ -6,17 +6,22 @@ on:
       - main
 
 jobs:
-  call-reusable-workflow:
+  main-job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Main Workflow Started
-        run: echo "✓ Main Workflow Started"
+        run: echo "✓ Main Workflow Started - Calling Reusable Workflow"
 
-      - name: Call Reusable Workflow
-        uses: ./.github/workflows/reusable-workflow.yml
+  call-reusable-workflow:
+    needs: main-job
+    uses: ./.github/workflows/reusable-workflow.yml
 
+  finish-job:
+    needs: call-reusable-workflow
+    runs-on: ubuntu-latest
+    steps:
       - name: Main Workflow Completed
-        run: echo "✓ Main Workflow Completed"
+        run: echo "✓ Main Workflow Completed Successfully"

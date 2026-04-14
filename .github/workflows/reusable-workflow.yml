@@ -7,10 +7,13 @@ jobs:
   reusable-job:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Reusable Workflow Started
         run: echo "✓ Reusable Workflow Started"
 
-      - name: Processing
+      - name: Processing Step
         run: echo "→ Processing reusable workflow logic"
 
       - name: Reusable Workflow Completed
