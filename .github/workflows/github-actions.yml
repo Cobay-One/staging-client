@@ -65,8 +65,13 @@ jobs:
           echo "Timestamp:  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "=============================================="
 
-          DEPLOY_END=$(date -u +%s)
           DEPLOY_START="${{ env.DEPLOY_START }}"
+          DEPLOY_END=$(date -u +%s)
+          if [ "$DEPLOY_END" -le "$DEPLOY_START" ]; then
+            DEPLOY_END=$((DEPLOY_START + 1))
+          fi
+          echo "DEPLOY_START: $DEPLOY_START"
+          echo "DEPLOY_END:   $DEPLOY_END"
 
           PAYLOAD=$(cat <<EOJSON
           {
