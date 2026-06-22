@@ -73,26 +73,26 @@ jobs:
           echo "DEPLOY_START: $DEPLOY_START"
           echo "DEPLOY_END:   $DEPLOY_END"
 
-          PAYLOAD=$(cat <<EOJSON
-          {
-            "data": {
-              "attributes": {
-                "service": "staging-client",
-                "started_at": ${DEPLOY_START},
-                "finished_at": ${DEPLOY_END},
-                "git": {
-                  "commit_sha": "${{ github.sha }}",
-                  "repository_url": "https://github.com/${{ github.repository }}"
+          PAYLOAD="{
+            \"data\": {
+              \"attributes\": {
+                \"service\": \"staging-client\",
+                \"started_at\": ${DEPLOY_START},
+                \"finished_at\": ${DEPLOY_END},
+                \"git\": {
+                  \"commit_sha\": \"${{ github.sha }}\",
+                  \"repository_url\": \"https://github.com/${{ github.repository }}\"
                 },
-                "env": "production",
-                "version": "${{ github.sha }}"
+                \"env\": \"production\",
+                \"version\": \"${{ github.sha }}\"
               }
             }
-          }
-          EOJSON
-          )
+          }"
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.us5.datadoghq.com/api/v2/dora/deployment" \
+          echo "Payload: $PAYLOAD"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.us5.datadoghq.com/api/v2/dora/deployment" \
             -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
             -H "DD-APPLICATION-KEY: ${{ secrets.DD_APP_KEY }}" \
             -H "Content-Type: application/json" \
