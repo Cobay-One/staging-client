@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Main Workflow Started
         run: echo "✓ Main Workflow Started - Calling Reusable Workflow"
@@ -22,6 +22,81 @@ jobs:
   finish-job:
     needs: call-reusable-workflow
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || '' }}
+
+    env:
+      DD_API_KEY: ${{ secrets.DD_API_KEY }}       # env-specific
+      DD_APP_KEY: ${{ secrets.DD_APP_KEY }}        # env-specific
+      TAG_ENV: ${{ secrets.TAG_ENV }}              # env-specific (e.g., "staging" / "production")
+      GIT_SHA: ${{ github.sha }}
+
     steps:
       - name: Main Workflow Completed
         run: echo "✓ Main Workflow Completed Successfully"
+
+      - name: Log Environment Info
+        run: |
+          echo "========== Environment Info =========="
+          echo "Branch:      ${{ github.ref_name }}"
+          echo "Ref:         ${{ github.ref }}"
+          echo "Commit SHA:  ${{ github.sha }}"
+          echo "Repository:  ${{ github.repository }}"
+          echo "Environment: ${{ github.ref_name == 'main' && 'production' || 'none' }}"
+          echo "TAG_ENV:     ${{ env.TAG_ENV }}"
+          echo "======================================"
+
+      - name: Log Datadog Secrets Availability
+        run: |
+          echo "========== Datadog Config Check =========="
+          if [ -n "${{ secrets.DD_API_KEY }}" ]; then echo "DD_API_KEY:  ✓ set"; else echo "DD_API_KEY:  ✗ missing"; fi
+          if [ -n "${{ secrets.DD_APP_KEY }}" ]; then echo "DD_APP_KEY:  ✓ set"; else echo "DD_APP_KEY:  ✗ missing"; fi
+          echo "==========================================="
+
+      - name: Send Deployment Event to Datadog
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "========== Datadog DORA Deployment =========="
+          echo "Sending deployment event to Datadog..."
+          echo "Service:    staging-client"
+          echo "Commit:     ${{ github.sha }}"
+          echo "Timestamp:  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "=============================================="
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.datadoghq.com/api/v2/dora/deployment" \
+            -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
+            -H "DD-APPLICATION-KEY: ${{ secrets.DD_APP_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "data": {
+                "attributes": {
+                  "service": "staging-client",
+                  "started_at": '"$(date +%s)"',
+                  "finished_at": '"$(date +%s)"',
+                  "git": {
+                    "commit_sha": "${{ github.sha }}",
+                    "repository_url": "https://github.com/${{ github.repository }}"
+                  },
+                  "env": "production",
+                  "version": "${{ github.sha }}"
+                }
+              }
+            }')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "========== Datadog Response =========="
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response:    $BODY"
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "Result:      ✓ Deployment event sent successfully"
+          else
+            echo "Result:      ✗ Failed to send deployment event"
+            exit 1
+          fi
+          echo "======================================"
+
+      - name: Skip Datadog (non-production)
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Skipping Datadog DORA event - not a production deployment (branch: ${{ github.ref_name }})"
