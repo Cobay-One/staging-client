@@ -62,7 +62,7 @@ jobs:
           echo "Timestamp:  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "=============================================="
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.datadoghq.com/api/v2/dora/deployment" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.us5.datadoghq.com/api/v2/dora/deployment" \
             -H "DD-API-KEY: ${{ secrets.DD_API_KEY }}" \
             -H "DD-APPLICATION-KEY: ${{ secrets.DD_APP_KEY }}" \
             -H "Content-Type: application/json" \
